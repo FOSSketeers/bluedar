@@ -22,13 +22,13 @@ impl Radar {
 
         frame.fill(&bg, Color::WHITE);
 
-        for x in (bounds.x as usize..(bounds.x + bounds.width) as usize).step_by(GRID_LINE_SPACING) {
+        for x in (0..bounds.width as usize).step_by(GRID_LINE_SPACING) {
             let line = canvas::Path::rectangle(Point::new(x as f32 - GRID_LINE_THICKNESS / 2.0, 0.0), Size::new(GRID_LINE_THICKNESS, bounds.height));
 
             frame.fill(&line, Color::from_rgb(0.3, 0.3, 0.3));
         }
 
-        for y in (bounds.y as usize..(bounds.y + bounds.height) as usize).step_by(GRID_LINE_SPACING) {
+        for y in (0..bounds.height as usize).step_by(GRID_LINE_SPACING) {
             let line = canvas::Path::rectangle(Point::new(0.0, y as f32 - GRID_LINE_THICKNESS / 2.0), Size::new(bounds.width, GRID_LINE_THICKNESS));
 
             frame.fill(&line, Color::from_rgb(0.3, 0.3, 0.3));
