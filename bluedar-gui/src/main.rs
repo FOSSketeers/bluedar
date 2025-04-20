@@ -1,8 +1,33 @@
-use iced::{mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Theme};
+use std::time::Duration;
+
+use iced::{
+    futures::stream::Stream,
+    mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
+use rumqttc::{MqttOptions, AsyncClient, QoS};
+
+fn mqtt_channel() -> impl Stream<Item = Message> {
+    iced::stream::channel(100, |mut output| async move {
+        let mut mqttoptions = MqttOptions::new("bluedar-gui-test", "broker.emqx.io", 1883);
+        mqttoptions.set_keep_alive(Duration::from_secs(5));
+
+        println!("Connecting to MQTT broker...");
+        let (mut client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
+        client.subscribe("bluedar-test-3", QoS::AtMostOnce).await.unwrap();
+        println!("Subscribed to topic.");
+
+        while let Ok(message) = eventloop.poll().await {
+            if let rumqttc::Event::Incoming(rumqttc::Incoming::Publish(message)) = message {
+                println!("{:?}", message.payload);
+            }
+        }
+    })
+}
 
 pub fn main() -> iced::Result {
-    iced::run("Bluedar GUI", Application::update, Application::view)
+    iced::application("Bluedar GUI", Application::update, Application::view)
+    .subscription(Application::subscription)
+    .run()
 }
 
 #[derive(Debug, Clone)]
@@ -12,7 +37,7 @@ struct Device {
     coords: (f32, f32),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
 }
 
@@ -92,6 +117,10 @@ struct Application {
 }
 
 impl Application {
+    fn subscription(&self) -> Subscription<Message> {
+        Subscription::run(mqtt_channel)
+    }
+
     fn update(&mut self, message: Message) {
     }
 
