@@ -1,2 +1,2 @@
 # bluedar
-A Bluetooth based positioning/multilateration system using ESP32Ss.
+A Bluetooth based positioning/multilateration system using NodeMCU-32S boards, based on the ESP32 platform.
