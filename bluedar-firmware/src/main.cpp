@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <bluedar/bluetooth.h>
+#include <bluedar/led.h>
 
 enum class BluedarState {
     POWER_ON,
@@ -27,7 +28,7 @@ void loop() {
         }
 
         case BluedarState::CONNECTING_TO_WIFI: {  // state 1
-            // TODO led blink fast (async)
+            bluedar::led::blinkFast();
             // TODO connect to wifi (sync)
             // TODO wifi disconnect event handler sets appState to 1 (async)
             appState = BluedarState::SETUP_NTP_AND_MQTT;
@@ -35,7 +36,7 @@ void loop() {
         }
 
         case BluedarState::SETUP_NTP_AND_MQTT: {  // state 2
-            // TODO led blink slow (async)
+            bluedar::led::blinkSlow();
             // TODO set up ntp
             // TODO connect to mqtt
             appState = BluedarState::SETUP_BLUETOOTH;
@@ -43,15 +44,15 @@ void loop() {
         }
 
         case BluedarState::SETUP_BLUETOOTH: {  // state 3
-            // TODO led off
+            bluedar::led::toggleOff();
             bluedar::bt::setupAll();
             appState = BluedarState::SCANNING;
         }
 
         case BluedarState::SCANNING: {  // state 4
-            // TODO led on
+            bluedar::led::toggleOn();
             bluedar::bt::scan(scanPeriodSeconds);
-            // TODO led off
+            bluedar::led::toggleOff();
             // TODO publish scan results to mqtt 'discovery' topic
 
 #ifdef SERIAL_DEBUG
