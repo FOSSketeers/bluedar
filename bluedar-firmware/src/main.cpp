@@ -1,71 +1,64 @@
 #include <Arduino.h>
-#include <BLEDevice.h>
-#include <BluetoothSerial.h>
-#include <map>
-#include "util.h"
+#include <bluedar/bluetooth.h>
 
-std::map<std::string, BtDevice> discoveredDevices;
-BluetoothSerial btcSerial;
-BLEScan* bleScan;
-
-void btcCallback(BTAdvertisedDevice* advDevice) {
-    std::string name = advDevice->getName().c_str();
-    std::string macAddr = advDevice->getAddress().toString().c_str();
-    uint32_t cod = advDevice->getCOD();
-    int8_t rssi = advDevice->getRSSI();
-    BtcAdvertisedDevice device = {name, macAddr, cod, rssi};
-    discoveredDevices[macAddr] = {device, 30};
-}
-
-class BleCallbackClass : public BLEAdvertisedDeviceCallbacks {
-    void onResult(BLEAdvertisedDevice device) {
-        std::string macAddr = device.getAddress().toString();
-        discoveredDevices[macAddr] = {device, 30};
-    }
+enum class BluedarState {
+    POWER_ON,
+    CONNECTING_TO_WIFI,
+    SETUP_NTP_AND_MQTT,
+    SETUP_BLUETOOTH,
+    SCANNING
 };
 
-void setupBle() {
-    BLEDevice::init("esp32 ble scanner");
-    bleScan = BLEDevice::getScan();
-    BLEAdvertisedDeviceCallbacks* callback = new BleCallbackClass();
-    bleScan->setAdvertisedDeviceCallbacks(callback);
-    bleScan->setActiveScan(true);
-}
-
-void setupBtc() {
-    btcSerial.begin("esp32 bt scanner");
-}
+volatile BluedarState appState = BluedarState::POWER_ON;
+constexpr int scanPeriodSeconds = 5;
 
 void setup() {
+#ifdef SERIAL_DEBUG
     Serial.begin(115200);
-    setupBle();  // Ble = Bluetooth Low Energy
-    setupBtc();  // Btc = Bluetooth Classic (BR/EDR)
-    Serial.println("outta setup");
+#endif
+    pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
-    btcSerial.discoverAsync(btcCallback, 5000);
-    bleScan->start(5);  // 5 seconds of blocking scan
-    // This delay is needed for async bt classic scan
-    btcSerial.discoverAsyncStop();
+    switch (appState) {
+        case BluedarState::POWER_ON: {  // state 0
+            appState = BluedarState::CONNECTING_TO_WIFI;
+            break;
+        }
 
-    int btCount = 0, bleCount = 0;
-    Serial.println("\n\n\n\n\n\n");
-    for (auto it = discoveredDevices.begin(); it != discoveredDevices.end();) {
-        auto& item = it->second;
-        item.ttl -= 1;
-        if (item.ttl < 0) {
-            it = discoveredDevices.erase(it);
-        } else {
-            item.print();
-            if (item.getDeviceType() == BtDeviceType::BtClassic) {
-                btCount++;
-            } else {
-                bleCount++;
-            }
-            ++it;
+        case BluedarState::CONNECTING_TO_WIFI: {  // state 1
+            // TODO led blink fast (async)
+            // TODO connect to wifi (sync)
+            // TODO wifi disconnect event handler sets appState to 1 (async)
+            appState = BluedarState::SETUP_NTP_AND_MQTT;
+            break;
+        }
+
+        case BluedarState::SETUP_NTP_AND_MQTT: {  // state 2
+            // TODO led blink slow (async)
+            // TODO set up ntp
+            // TODO connect to mqtt
+            appState = BluedarState::SETUP_BLUETOOTH;
+            break;
+        }
+
+        case BluedarState::SETUP_BLUETOOTH: {  // state 3
+            // TODO led off
+            bluedar::bt::setupAll();
+            appState = BluedarState::SCANNING;
+        }
+
+        case BluedarState::SCANNING: {  // state 4
+            // TODO led on
+            bluedar::bt::scan(scanPeriodSeconds);
+            // TODO led off
+            // TODO publish scan results to mqtt 'discovery' topic
+
+#ifdef SERIAL_DEBUG
+            bluedar::bt::printDiscoveredDevices();
+#elif defined(MQTT_DEBUG)
+            // publish the entire discovered devices map to mqtt 'debug' topic
+#endif
         }
     }
-    Serial.printf("TOTAL DEVICE COUNT: %d | btc: %d | ble: %d\n",
-                  discoveredDevices.size(), btCount, bleCount);
 }
