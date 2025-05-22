@@ -5,6 +5,7 @@ use iced::{
     mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
+use serde::Deserialize;
 
 fn mqtt_channel() -> impl Stream<Item = Message> {
     iced::stream::channel(100, |mut output| async move {
@@ -13,12 +14,13 @@ fn mqtt_channel() -> impl Stream<Item = Message> {
 
         println!("Connecting to MQTT broker...");
         let (mut client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
-        client.subscribe("bluedar-test-3", QoS::AtMostOnce).await.unwrap();
+        client.subscribe("bluedar-topic-discovery", QoS::AtMostOnce).await.unwrap();
         println!("Subscribed to topic.");
 
         while let Ok(message) = eventloop.poll().await {
             if let rumqttc::Event::Incoming(rumqttc::Incoming::Publish(message)) = message {
-                println!("{:?}", message.payload);
+                let scan: ScanResult = serde_json::from_slice(&message.payload).unwrap();
+                println!("{:?}", scan);
             }
         }
     })
@@ -30,20 +32,25 @@ pub fn main() -> iced::Result {
     .run()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 struct Device {
-    mac_address: [u8; 6],
-    display_name: Option<String>,
-    coords: (f32, f32),
+    address: String,
+    rssi: i8,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct ScanResult {
+    probe_id: i8,
+    discovered_devices: Vec<Device>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Default)]
 struct Radar {
-    devices: Vec<Device>,
+    last_scans: [Option<ScanResult>; 4],
 }
 
 const GRID_LINE_THICKNESS: f32 = 1.0;
@@ -53,9 +60,7 @@ const DEVICE_CIRCLE_RADIUS: f32 = 20.0;
 impl Radar {
     fn device_color(device: &Device) -> Color {
         Color::from_rgb8(
-            device.mac_address[0] ^ device.mac_address[3],
-            device.mac_address[1] ^ device.mac_address[4],
-            device.mac_address[2] ^ device.mac_address[5]
+            0, 0, 0
         )
     }
 
@@ -78,15 +83,10 @@ impl Radar {
     }
 
     fn draw_devices(&self, frame: &mut canvas::Frame, _bounds: &Rectangle) {
-        let devices = [
-            Device { mac_address: [0x22, 0xb4, 0xcd, 0x50, 0xa7, 0xda], display_name: None, coords: (500.0, 500.0)},
-            Device { mac_address: [0x51, 0xd2, 0xce, 0x49, 0x50, 0x93], display_name: None, coords: (300.0, 700.0)}
-        ];
+        for scan in &self.last_scans {
+            // let device_circle = canvas::Path::circle(Point::new(device.coords.0, device.coords.1), DEVICE_CIRCLE_RADIUS);
 
-        for device in devices {
-            let device_circle = canvas::Path::circle(Point::new(device.coords.0, device.coords.1), DEVICE_CIRCLE_RADIUS);
-
-            frame.fill(&device_circle, Radar::device_color(&device));
+            // frame.fill(&device_circle, Radar::device_color(&device));
         }
     }
 }
@@ -113,7 +113,7 @@ impl<Message> canvas::Program<Message> for Radar {
 
 #[derive(Default)]
 struct Application {
-    devices: Vec<Device>,
+    radar: Radar,
 }
 
 impl Application {
@@ -126,7 +126,7 @@ impl Application {
 
     fn view(&self) -> Column<Message> {
         column![
-            canvas(Radar { devices: self.devices.clone() })
+            canvas(self.radar.clone())
             .width(Fill)
             .height(Fill)
         ]
