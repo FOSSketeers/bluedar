@@ -1,7 +1,49 @@
-#include <Arduino.h>
+#include "BtDevice.h"
 
-String getBleAppearanceString(uint16_t appearanceId) {
-    switch (appearanceId) {
+namespace bluedar::bt {
+
+void BtDevice::print() {
+    switch (deviceType) {
+        case BtDeviceType::BtClassic: {
+            auto btc = std::get<BtcAdvertisedDevice>(device);
+            Serial.print("BTC Device Name: ");
+            Serial.println(btc.name.c_str());
+            Serial.print("Address: ");
+            Serial.println(btc.address.c_str());
+            Serial.print("Class of Device: ");
+            Serial.println(getBtcClassOfDeviceString());
+            Serial.print("RSSI: ");
+            Serial.println(btc.rssi);
+        } break;
+
+        case BtDeviceType::BtLowEnergy: {
+            auto ble = std::get<BLEAdvertisedDevice>(device);
+            Serial.print("BLE Device Name: ");
+            Serial.println(ble.getName().c_str());
+            Serial.print("Address: ");
+            Serial.println(ble.getAddress().toString().c_str());
+            Serial.print("Address Type: ");
+            Serial.println(getBleAddressTypeString());
+            Serial.print("Appearance: ");
+            Serial.println(getBleAppearanceString());
+            Serial.print("TX Power: ");
+            Serial.println(ble.getTXPower());
+            Serial.print("RSSI: ");
+            Serial.println(ble.getRSSI());
+        } break;
+    }
+
+    Serial.printf("TTL: %d out of %d\n", ttl, initial_ttl);
+    Serial.println("------------------------");
+}
+
+BtDeviceType BtDevice::getDeviceType() {
+    return deviceType;
+}
+
+String BtDevice::getBleAppearanceString() {
+    auto ble = std::get<BLEAdvertisedDevice>(device);
+    switch (ble.getAppearance()) {
         case 0x0000:
             return "UNKNOWN";
         case 0x0040:
@@ -123,8 +165,9 @@ String getBleAppearanceString(uint16_t appearanceId) {
     }
 }
 
-String getBleAddressTypeString(int addrType) {
-    switch (addrType) {
+String BtDevice::getBleAddressTypeString() {
+    auto ble = std::get<BLEAdvertisedDevice>(device);
+    switch (ble.getAddressType()) {
         case 0x00:
             return "Public Device Address";
         case 0x01:
@@ -138,8 +181,9 @@ String getBleAddressTypeString(int addrType) {
     }
 }
 
-String getBtcClassOfDeviceString(uint32_t codType) {
-    switch (codType) {
+String BtDevice::getBtcClassOfDeviceString() {
+    auto btc = std::get<BtcAdvertisedDevice>(device);
+    switch (btc.cod) {
         case 0x000000:
             return "none";
         case 0x000020:
@@ -432,3 +476,5 @@ String getBtcClassOfDeviceString(uint32_t codType) {
             return "UNKNOWN";
     }
 }
+
+}  // namespace bluedar::bt
