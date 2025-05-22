@@ -18,6 +18,7 @@
           # build
           cargo
           clang
+          openssl
           rustc
 
           #runtime

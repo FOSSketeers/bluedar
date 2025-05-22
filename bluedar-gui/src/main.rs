@@ -1,15 +1,23 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use iced::{
-    futures::stream::Stream,
+    futures::{sink::SinkExt, stream::Stream},
     mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
+const PROPAGATION_CONST: f64 = 2.7;
+const BIAS: f64 = -59.75;
+
+fn rssi_to_distance(rssi: f64) -> f64 {
+    10f64.powf((rssi / (-10.0 * PROPAGATION_CONST)) - BIAS)
+}
+
 fn mqtt_channel() -> impl Stream<Item = Message> {
     iced::stream::channel(100, |mut output| async move {
-        let mut mqttoptions = MqttOptions::new("bluedar-gui-test", "broker.emqx.io", 1883);
+        let mut mqttoptions = MqttOptions::new("bluedar-gui-test", "ikolomiko.com", 1883);
         mqttoptions.set_keep_alive(Duration::from_secs(5));
 
         println!("Connecting to MQTT broker...");
@@ -20,7 +28,8 @@ fn mqtt_channel() -> impl Stream<Item = Message> {
         while let Ok(message) = eventloop.poll().await {
             if let rumqttc::Event::Incoming(rumqttc::Incoming::Publish(message)) = message {
                 let scan: ScanResult = serde_json::from_slice(&message.payload).unwrap();
-                println!("{:?}", scan);
+                println!("DEBUG: Received new scan: {:?}", scan);
+                let _ = output.send(Message::NewScan(scan)).await;
             }
         }
     })
@@ -35,6 +44,7 @@ pub fn main() -> iced::Result {
 #[derive(Debug, Deserialize, Clone)]
 struct Device {
     address: String,
+    name: String,
     rssi: i8,
 }
 
@@ -46,10 +56,18 @@ struct ScanResult {
 
 #[derive(Debug, Clone)]
 enum Message {
+    NewScan(ScanResult),
+}
+
+#[derive(Clone, Debug, Default)]
+struct Probe {
+    id: u8,
+    coords: ndarray::Array1<f64>,
 }
 
 #[derive(Clone, Debug, Default)]
 struct Radar {
+    probes: [Option<Probe>; 4],
     last_scans: [Option<ScanResult>; 4],
 }
 
@@ -83,7 +101,53 @@ impl Radar {
     }
 
     fn draw_devices(&self, frame: &mut canvas::Frame, _bounds: &Rectangle) {
+        // ASSUMPTION: A device does not appear multiple times in a single probe.
+        let mut devices = HashMap::new();
+
+        // Transposing the scans here, as we're more interested in what probes got a single device rather
+        // than what devices a single probe got.
         for scan in &self.last_scans {
+            if let Some(scan) = scan {
+                for device in &scan.discovered_devices {
+                    if !devices.contains_key(&device.address) {
+                        devices.insert(&device.address, vec![]);
+                    }
+
+                    devices.get_mut(&device.address).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone().unwrap(), device.rssi));
+                }
+            }
+        }
+
+        for (address, probes) in devices {
+            if probes.len() < 4 {
+                println!("Skipping device {:#?}, does not have enough probes.", address);
+                continue;
+            }
+
+            let probe_n = (&probes[3]).clone();
+
+            let A = ndarray::Array::from_shape_vec((3, 2), vec![
+                (2.0 * (&probes[0].0.coords - &probe_n.0.coords)).into_raw_vec(),
+                (2.0 * (&probes[1].0.coords - &probe_n.0.coords)).into_raw_vec(),
+                (2.0 * (&probes[2].0.coords - &probe_n.0.coords)).into_raw_vec(),
+            ]).unwrap();
+
+            let b = ndarray::Array::from_shape_vec((0, 3), vec![
+                (&probes[0].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
+                + (&probes[0].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
+                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[0].1 as f64).powf(2.0),
+
+                (&probes[1].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
+                + (&probes[1].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
+                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[1].1 as f64).powf(2.0),
+
+                (&probes[2].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
+                + (&probes[2].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
+                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[2].1 as f64).powf(2.0),
+            ]).unwrap();
+
+            let device_coords = (A.reversed_axes() * A).inv() * (A.reversed_axes() * b);
+
             // let device_circle = canvas::Path::circle(Point::new(device.coords.0, device.coords.1), DEVICE_CIRCLE_RADIUS);
 
             // frame.fill(&device_circle, Radar::device_color(&device));
