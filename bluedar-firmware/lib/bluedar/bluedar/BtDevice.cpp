@@ -2,45 +2,63 @@
 
 namespace bluedar::bt {
 
-void BtDevice::print() {
-    switch (deviceType) {
-        case BtDeviceType::BtClassic: {
-            auto btc = std::get<BtcAdvertisedDevice>(device);
-            Serial.print("BTC Device Name: ");
-            Serial.println(btc.name.c_str());
-            Serial.print("Address: ");
-            Serial.println(btc.address.c_str());
-            Serial.print("Class of Device: ");
-            Serial.println(getBtcClassOfDeviceString());
-            Serial.print("RSSI: ");
-            Serial.println(btc.rssi);
-        } break;
+BtDevice::BtDevice() : initial_ttl(BT_DEVICE_INITIAL_TTL) {}
 
-        case BtDeviceType::BtLowEnergy: {
-            auto ble = std::get<BLEAdvertisedDevice>(device);
-            Serial.print("BLE Device Name: ");
-            Serial.println(ble.getName().c_str());
-            Serial.print("Address: ");
-            Serial.println(ble.getAddress().toString().c_str());
-            Serial.print("Address Type: ");
-            Serial.println(getBleAddressTypeString());
-            Serial.print("Appearance: ");
-            Serial.println(getBleAppearanceString());
-            Serial.print("TX Power: ");
-            Serial.println(ble.getTXPower());
-            Serial.print("RSSI: ");
-            Serial.println(ble.getRSSI());
-        } break;
-    }
+// BtDevice::BtDevice(BTAdvertisedDevice& device)
+//     : initial_ttl(BT_DEVICE_INITIAL_TTL),
+//       deviceType(BtDeviceType::BtClassic),
+//       name(device.getName()),
+//       address(device.getAddress().toString().c_str()),
+//       btAddressTypeId(BtAddressType::BT_CLASSIC),
+//       appearanceId(device.getCOD()),
+//       ttl(BT_DEVICE_INITIAL_TTL) {}
 
-    Serial.printf("TTL: %d out of %d\n", ttl, initial_ttl);
-    Serial.println("------------------------");
+// BtDevice::BtDevice(BTAdvertisedDevice& device, int8_t ttl)
+//     : initial_ttl(ttl),
+//       deviceType(BtDeviceType::BtClassic),
+//       name(device.getName()),
+//       address(device.getAddress().toString().c_str()),
+//       btAddressTypeId(BtAddressType::BT_CLASSIC),
+//       appearanceId(device.getCOD()),
+//       ttl(ttl) {}
+
+BtDevice::BtDevice(const NimBLEAdvertisedDevice* device)
+    : initial_ttl(BT_DEVICE_INITIAL_TTL),
+      deviceType(BtDeviceType::BtLowEnergy),
+      name(device->getName().c_str()),
+      address(device->getAddress().toString().c_str()),
+      btAddressTypeId((BtAddressType)(device->getAddressType() + 2)),
+      appearanceId(device->getAppearance()),
+      rssi(device->getRSSI()),
+      ttl(BT_DEVICE_INITIAL_TTL) {}
+
+BtDevice::BtDevice(const NimBLEAdvertisedDevice* device, int8_t ttl)
+    : initial_ttl(ttl),
+      deviceType(BtDeviceType::BtLowEnergy),
+      name(device->getName().c_str()),
+      address(device->getAddress().toString().c_str()),
+      btAddressTypeId((BtAddressType)(device->getAddressType() + 2)),
+      appearanceId(device->getAppearance()),
+      rssi(device->getRSSI()),
+      ttl(ttl) {}
+
+std::string BtDevice::print() const {
+    std::string buf;
+    buf.reserve(512);
+
+    buf += (deviceType == BtDeviceType::BtClassic) ? "BTC" : "BLE";
+    buf += " Device Name: " + name + "\n";
+    buf += "Address: " + address + "\n";
+    buf += "Address Type ID: " + std::to_string((int)btAddressTypeId) + "\n";
+    buf += "Appearance ID: " + std::to_string(appearanceId) + "\n";
+    buf += "RSSI: " + std::to_string(rssi) + "\n";
+    buf += "TTL: " + std::to_string(ttl) + " out of ";
+    buf += std::to_string(initial_ttl) + "\n---------------\n";
+
+    return buf;
 }
 
-BtDeviceType BtDevice::getDeviceType() {
-    return deviceType;
-}
-
+/* Kept as a comment block for reference purposes
 String BtDevice::getBleAppearanceString() {
     auto ble = std::get<BLEAdvertisedDevice>(device);
     switch (ble.getAppearance()) {
@@ -160,22 +178,6 @@ String BtDevice::getBleAppearanceString() {
             return "OUTDOOR_SPORTS_LOCATION_POD";
         case 0x1444:
             return "OUTDOOR_SPORTS_LOCATION_POD_AND_NAV";
-        default:
-            return "THIS SHOULD NEVER HAPPEN";
-    }
-}
-
-String BtDevice::getBleAddressTypeString() {
-    auto ble = std::get<BLEAdvertisedDevice>(device);
-    switch (ble.getAddressType()) {
-        case 0x00:
-            return "Public Device Address";
-        case 0x01:
-            return "Random Device Address";
-        case 0x02:
-            return "Resolvable Private Address with public identity addr";
-        case 0x03:
-            return "Resolvable Private Address with random identity addr";
         default:
             return "THIS SHOULD NEVER HAPPEN";
     }
@@ -476,5 +478,6 @@ String BtDevice::getBtcClassOfDeviceString() {
             return "UNKNOWN";
     }
 }
+*/
 
 }  // namespace bluedar::bt
