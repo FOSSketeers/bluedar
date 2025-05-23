@@ -77,7 +77,7 @@ const GRID_LINE_SPACING: usize = 20;
 const DEVICE_CIRCLE_RADIUS: f32 = 20.0;
 
 impl Radar {
-    fn device_color(device: &Device) -> Color {
+    fn device_color() -> Color {
         Color::from_rgb8(
             0, 0, 0
         )
@@ -150,9 +150,9 @@ impl Radar {
             let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
             println!("{} {}", address, device_coords);
 
-            // let device_circle = canvas::Path::circle(Point::new(device.coords.0, device.coords.1), DEVICE_CIRCLE_RADIUS);
+            let device_circle = canvas::Path::circle(Point::new(*device_coords.get(0).unwrap() as f32, *device_coords.get(1).unwrap() as f32), DEVICE_CIRCLE_RADIUS);
 
-            // frame.fill(&device_circle, Radar::device_color(&device));
+            frame.fill(&device_circle, Radar::device_color());
         }
     }
 }
@@ -188,6 +188,11 @@ impl Application {
     }
 
     fn update(&mut self, message: Message) {
+        match message {
+            Message::NewScan(scan) => {
+                self.radar.last_scans[scan.probe_id as usize - 1] = Some(scan.clone());
+            }
+        }
     }
 
     fn view(&self) -> Column<Message> {
