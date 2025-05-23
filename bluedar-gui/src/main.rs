@@ -5,6 +5,7 @@ use iced::{
     futures::{sink::SinkExt, stream::Stream},
     mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
+use nalgebra::{Matrix3x1, Matrix3x2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
@@ -62,7 +63,7 @@ enum Message {
 #[derive(Clone, Debug, Default)]
 struct Probe {
     id: u8,
-    coords: ndarray::Array1<f64>,
+    coords: Vector3<f64>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -126,13 +127,13 @@ impl Radar {
 
             let probe_n = (&probes[3]).clone();
 
-            let A = ndarray::Array::from_shape_vec((3, 2), vec![
-                (2.0 * (&probes[0].0.coords - &probe_n.0.coords)).into_raw_vec(),
-                (2.0 * (&probes[1].0.coords - &probe_n.0.coords)).into_raw_vec(),
-                (2.0 * (&probes[2].0.coords - &probe_n.0.coords)).into_raw_vec(),
-            ]).unwrap();
+            let A = Matrix3x2::from_columns(&vec![
+                2.0 * (&probes[0].0.coords - &probe_n.0.coords),
+                2.0 * (&probes[1].0.coords - &probe_n.0.coords),
+                2.0 * (&probes[2].0.coords - &probe_n.0.coords),
+            ]);
 
-            let b = ndarray::Array::from_shape_vec((0, 3), vec![
+            let b = Matrix3x1::new(
                 (&probes[0].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
                 + (&probes[0].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
                 + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[0].1 as f64).powf(2.0),
@@ -144,9 +145,10 @@ impl Radar {
                 (&probes[2].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
                 + (&probes[2].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
                 + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[2].1 as f64).powf(2.0),
-            ]).unwrap();
+            );
 
-            let device_coords = (A.reversed_axes() * A).inv() * (A.reversed_axes() * b);
+            let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
+            println!("{} {}", address, device_coords);
 
             // let device_circle = canvas::Path::circle(Point::new(device.coords.0, device.coords.1), DEVICE_CIRCLE_RADIUS);
 
