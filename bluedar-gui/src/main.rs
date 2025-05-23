@@ -8,8 +8,8 @@ use nalgebra::{Matrix1x2, Matrix1x3, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
-const PROPAGATION1_CONST: f64 = 3.10;
-const PROPAGATION2_CONST: f64 = 3.50;
+const PROPAGATION1_CONST: f64 = 3.00;
+const PROPAGATION2_CONST: f64 = 3.35;
 const PROPAGATION3_CONST: f64 = 2.70;
 const PROPAGATION4_CONST: f64 = 3.00;
 const BIAS: f64 = 0.0;
