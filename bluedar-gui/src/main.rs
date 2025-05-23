@@ -170,7 +170,7 @@ impl Radar {
 
             println!("{} {}", address, device_coords);
 
-            let device_circle = canvas::Path::circle(Point::new(*device_coords.get(0).unwrap() as f32, *device_coords.get(1).unwrap() as f32), DEVICE_CIRCLE_RADIUS);
+            let device_circle = canvas::Path::circle(Point::new(device_coords.x as f32, device_coords.y as f32), DEVICE_CIRCLE_RADIUS);
 
             frame.fill(&device_circle, Radar::device_color());
         }
