@@ -78,7 +78,7 @@ impl Default for Radar {
         Radar {
             probes: [
                 Probe { id: 1, coords: Matrix1x2::new(300.0, 300.0) },
-                Probe { id: 2, coords: Matrix1x2::new(300.0, 500.0) },
+                Probe { id: 2, coords: Matrix1x2::new(500.0, 300.0) },
                 Probe { id: 3, coords: Matrix1x2::new(500.0, 500.0) },
                 Probe { id: 4, coords: Matrix1x2::new(300.0, 500.0) },
             ],
