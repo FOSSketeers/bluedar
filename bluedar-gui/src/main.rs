@@ -5,7 +5,7 @@ use iced::{
     futures::{sink::SinkExt, stream::Stream},
     mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
-use nalgebra::{Matrix3x1, Matrix3x2, Vector3};
+use nalgebra::{Matrix1x2, Matrix1x3, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
@@ -63,13 +63,28 @@ enum Message {
 #[derive(Clone, Debug, Default)]
 struct Probe {
     id: u8,
-    coords: Vector3<f64>,
+    coords: Matrix1x2<f64>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Radar {
-    probes: [Option<Probe>; 4],
+    probes: [Probe; 4],
     last_scans: [Option<ScanResult>; 4],
+}
+
+// 1m -> 400px
+impl Default for Radar {
+    fn default() -> Self {
+        Radar {
+            probes: [
+                Probe { id: 1, coords: Matrix1x2::new(50.0, 50.0) },
+                Probe { id: 2, coords: Matrix1x2::new(450.0, 50.0) },
+                Probe { id: 3, coords: Matrix1x2::new(450.0, 450.0) },
+                Probe { id: 4, coords: Matrix1x2::new(50.0, 450.0) },
+            ],
+            last_scans: [None, None, None, None],
+        }
+    }
 }
 
 const GRID_LINE_THICKNESS: f32 = 1.0;
@@ -114,7 +129,7 @@ impl Radar {
                         devices.insert(&device.address, vec![]);
                     }
 
-                    devices.get_mut(&device.address).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone().unwrap(), device.rssi));
+                    devices.get_mut(&device.address).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone(), device.rssi));
                 }
             }
         }
@@ -127,27 +142,24 @@ impl Radar {
 
             let probe_n = (&probes[3]).clone();
 
-            let A = Matrix3x2::from_columns(&vec![
-                2.0 * (&probes[0].0.coords - &probe_n.0.coords),
-                2.0 * (&probes[1].0.coords - &probe_n.0.coords),
-                2.0 * (&probes[2].0.coords - &probe_n.0.coords),
+            let A = Matrix3x2::from_rows(&[
+                2.0 * (probes[0].0.coords - probe_n.0.coords),
+                2.0 * (probes[1].0.coords - probe_n.0.coords),
+                2.0 * (probes[2].0.coords - probe_n.0.coords),
             ]);
 
-            let b = Matrix3x1::new(
-                (&probes[0].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
-                + (&probes[0].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
-                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[0].1 as f64).powf(2.0),
+            let sq = |v: &Matrix1x2<f64>| v.x.powi(2) + v.y.powi(2);
 
-                (&probes[1].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
-                + (&probes[1].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
-                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[1].1 as f64).powf(2.0),
+            let d_n_sq = rssi_to_distance(probe_n.1 as f64).powi(2);
 
-                (&probes[2].0.coords).get(0).unwrap().powf(2.0) - (&probe_n.0.coords).get(0).unwrap().powf(2.0)
-                + (&probes[2].0.coords).get(1).unwrap().powf(2.0) - (&probe_n.0.coords).get(1).unwrap().powf(2.0)
-                + rssi_to_distance(probe_n.1 as f64).powf(2.0) - rssi_to_distance(probes[2].1 as f64).powf(2.0),
+            let b = Vector3::new(
+                sq(&probes[0].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[0].1 as f64).powi(2),
+                sq(&probes[1].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[1].1 as f64).powi(2),
+                sq(&probes[2].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[2].1 as f64).powi(2),
             );
 
             let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
+
             println!("{} {}", address, device_coords);
 
             let device_circle = canvas::Path::circle(Point::new(*device_coords.get(0).unwrap() as f32, *device_coords.get(1).unwrap() as f32), DEVICE_CIRCLE_RADIUS);
