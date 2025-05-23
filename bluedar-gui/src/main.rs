@@ -144,15 +144,15 @@ impl Radar {
             if let Some(scan) = scan {
                 for device in &scan.discovered_devices {
                     if !devices.contains_key(&device.address) {
-                        devices.insert(&device.address, vec![]);
+                        devices.insert((&device.address, &device.name), vec![]);
                     }
 
-                    devices.get_mut(&device.address).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone(), device.rssi));
+                    devices.get_mut(&(&device.address, &device.name)).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone(), device.rssi));
                 }
             }
         }
 
-        for (address, probes) in devices {
+        for ((address, name), probes) in devices {
             if probes.len() < 4 {
                 // println!("Skipping device {:#?}, does not have enough probes.", address);
                 continue;
@@ -185,10 +185,15 @@ impl Radar {
             let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
 
             println!("{} {}", address, device_coords);
+            let color = if name == "BT4.0 Mouse" {
+                Color::from_rgb8(0, 255, 0)
+            } else {
+                Color::from_rgb8(255, 0, 0)
+            };
 
             let device_circle = canvas::Path::circle(Point::new(device_coords.x as f32, device_coords.y as f32), DEVICE_CIRCLE_RADIUS);
 
-            frame.fill(&device_circle, Radar::device_color());
+            frame.fill(&device_circle, color);
             frame.fill_text(Text {
                color: Color::BLACK,
                size: 14.0.into(),
