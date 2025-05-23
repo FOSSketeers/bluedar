@@ -89,12 +89,12 @@ impl Default for Radar {
 
 const GRID_LINE_THICKNESS: f32 = 1.0;
 const GRID_LINE_SPACING: usize = 20;
-const DEVICE_CIRCLE_RADIUS: f32 = 20.0;
+const DEVICE_CIRCLE_RADIUS: f32 = 15.0;
 
 impl Radar {
     fn device_color() -> Color {
         Color::from_rgb8(
-            0, 0, 0
+            255, 0, 0
         )
     }
 
