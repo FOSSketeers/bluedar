@@ -203,7 +203,7 @@ impl Radar {
                color: Color::BLACK,
                size: 14.0.into(),
                position: Point::new(device_coords.x as f32 + 10.0, device_coords.y as f32 + 10.0),
-               content: format!("{}", address),
+               content: format!("{} - {}", name, address),
                ..Default::default()
             });
         }
