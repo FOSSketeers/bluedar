@@ -8,8 +8,10 @@ use nalgebra::{Matrix1x2, Matrix1x3, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
-const PROPAGATION12_CONST: f64 = 2.4;
-const PROPAGATION34_CONST: f64 = 2.7;
+const PROPAGATION1_CONST: f64 = 1.39;
+const PROPAGATION2_CONST: f64 = 1.0;
+const PROPAGATION3_CONST: f64 = 2.70;
+const PROPAGATION4_CONST: f64 = 1.83;
 const BIAS: f64 = 0.0;
 
 fn rssi_to_distance(rssi: f64, n: f64) -> f64 {
@@ -163,10 +165,10 @@ impl Radar {
 
             if name == "BT4.0 Mouse" {
                 println!("DEVICE {}", address);
-                println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION12_CONST));
-                println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION12_CONST));
-                println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION34_CONST));
-                println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION34_CONST));
+                println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST));
+                println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST));
+                println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST));
+                println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION4_CONST));
             }
 
             let A = Matrix3x2::from_rows(&[
@@ -177,12 +179,12 @@ impl Radar {
 
             let sq = |v: &Matrix1x2<f64>| v.x.powi(2) + v.y.powi(2);
 
-            let d_n_sq = rssi_to_distance(probe_n.1 as f64, PROPAGATION34_CONST).powi(2);
+            let d_n_sq = rssi_to_distance(probe_n.1 as f64, PROPAGATION4_CONST).powi(2);
 
             let b = Vector3::new(
-                sq(&probes[0].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[0].1 as f64, PROPAGATION12_CONST).powi(2),
-                sq(&probes[1].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[1].1 as f64, PROPAGATION12_CONST).powi(2),
-                sq(&probes[2].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[2].1 as f64, PROPAGATION34_CONST).powi(2),
+                sq(&probes[0].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST).powi(2),
+                sq(&probes[1].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST).powi(2),
+                sq(&probes[2].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST).powi(2),
             );
 
             let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
