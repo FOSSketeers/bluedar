@@ -144,7 +144,7 @@ impl Radar {
 
         for (address, probes) in devices {
             if probes.len() < 4 {
-                println!("Skipping device {:#?}, does not have enough probes.", address);
+                // println!("Skipping device {:#?}, does not have enough probes.", address);
                 continue;
             }
 
