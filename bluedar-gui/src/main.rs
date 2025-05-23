@@ -187,6 +187,8 @@ impl Radar {
             println!("{} {}", address, device_coords);
             let color = if name == "BT4.0 Mouse" {
                 Color::from_rgb8(0, 255, 0)
+            } else if name == "HD 450BT" {
+                Color::from_rgb8(0, 0, 255)
             } else {
                 Color::from_rgb8(255, 0, 0)
             };
