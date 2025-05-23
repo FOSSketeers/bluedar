@@ -143,7 +143,7 @@ impl Radar {
         for scan in &self.last_scans {
             if let Some(scan) = scan {
                 for device in &scan.discovered_devices {
-                    if !devices.contains_key(&device.address) {
+                    if !devices.contains_key(&(&device.address, &device.name)) {
                         devices.insert((&device.address, &device.name), vec![]);
                     }
 
