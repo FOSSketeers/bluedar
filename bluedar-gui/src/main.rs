@@ -51,6 +51,7 @@ struct Device {
 #[derive(Debug, Deserialize, Clone)]
 struct ScanResult {
     probe_id: i8,
+    time: u64,
     discovered_devices: Vec<Device>,
 }
 
