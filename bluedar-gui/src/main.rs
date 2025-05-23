@@ -197,7 +197,7 @@ impl Radar {
                 Color::from_rgb8(255, 0, 0)
             };
 
-            let device_circle = canvas::Path::circle(Point::new(device_coords.x as f32, device_coords.y as f32), DEVICE_CIRCLE_RADIUS);
+            let device_circle = canvas::Path::circle(Point::new(device_coords.x.clamp(0.0, 2000.0) as f32, device_coords.y.clamp(0.0, 2000.0) as f32), DEVICE_CIRCLE_RADIUS);
 
             frame.fill(&device_circle, color);
             frame.fill_text(Text {
