@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use iced::{
-    futures::{sink::SinkExt, stream::Stream},
-    mouse, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
+    futures::{sink::SinkExt, stream::Stream}, mouse, widget::canvas::Text, Center, Color, Fill, Point, Rectangle, Renderer, Size, Subscription, Theme};
 use iced::widget::{button, canvas, column, text, Column};
 use nalgebra::{Matrix1x2, Matrix1x3, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
@@ -121,6 +120,13 @@ impl Radar {
             let circle = canvas::Path::circle(Point::new(probe.coords.x as f32, probe.coords.y as f32), DEVICE_CIRCLE_RADIUS);
 
             frame.fill(&circle, Color::from_rgb8(0, 0, 0));
+            frame.fill_text(Text {
+               color: Color::BLACK,
+               size: 14.0.into(),
+               position: Point::new(probe.coords.x as f32 + 10.0, probe.coords.y as f32 + 10.0),
+               content: format!("Probe {}", probe.id),
+               ..Default::default()
+            });
         }
     }
 
@@ -173,6 +179,13 @@ impl Radar {
             let device_circle = canvas::Path::circle(Point::new(device_coords.x as f32, device_coords.y as f32), DEVICE_CIRCLE_RADIUS);
 
             frame.fill(&device_circle, Radar::device_color());
+            frame.fill_text(Text {
+               color: Color::BLACK,
+               size: 14.0.into(),
+               position: Point::new(device_coords.x as f32 + 10.0, device_coords.y as f32 + 10.0),
+               content: format!("{}", address),
+               ..Default::default()
+            });
         }
     }
 }
