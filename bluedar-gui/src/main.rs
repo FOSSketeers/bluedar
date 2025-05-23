@@ -187,7 +187,6 @@ impl Radar {
 
             let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
 
-            println!("{} {}", address, device_coords);
             let color = if name == "BT4.0 Mouse" {
                 Color::from_rgb8(0, 255, 0)
             } else if name == "HD 450BT" {
