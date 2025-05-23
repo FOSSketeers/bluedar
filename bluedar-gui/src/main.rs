@@ -161,11 +161,13 @@ impl Radar {
 
             let probe_n = (&probes[3]).clone();
 
-            println!("DEVICE {}", address);
-            println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION12_CONST));
-            println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION12_CONST));
-            println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION34_CONST));
-            println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION34_CONST));
+            if name == "BT4.0 Mouse" {
+                println!("DEVICE {}", address);
+                println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION12_CONST));
+                println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION12_CONST));
+                println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION34_CONST));
+                println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION34_CONST));
+            }
 
             let A = Matrix3x2::from_rows(&[
                 2.0 * (probes[0].0.coords - probe_n.0.coords),
