@@ -72,10 +72,18 @@ struct Probe {
     coords: Matrix1x2<f64>,
 }
 
+#[derive(Clone, Debug, Default)]
+struct RadarDevice {
+    name: String,
+    address: String,
+    locations: Vec<(f64, f64)>
+}
+
 #[derive(Clone, Debug)]
 struct Radar {
     probes: [Probe; 4],
     last_scans: [Option<ScanResult>; 4],
+    devices: HashMap<String, RadarDevice>,
 }
 
 // 1m -> 200px
@@ -89,6 +97,7 @@ impl Default for Radar {
                 Probe { id: 4, coords: Matrix1x2::new(300.0, 500.0) },
             ],
             last_scans: [None, None, None, None],
+            devices: HashMap::new(),
         }
     }
 }
@@ -138,73 +147,26 @@ impl Radar {
     }
 
     fn draw_devices(&self, frame: &mut canvas::Frame, _bounds: &Rectangle) {
-        // ASSUMPTION: A device does not appear multiple times in a single probe.
-        let mut devices = HashMap::new();
-
-        // Transposing the scans here, as we're more interested in what probes got a single device rather
-        // than what devices a single probe got.
-        for scan in &self.last_scans {
-            if let Some(scan) = scan {
-                for device in &scan.discovered_devices {
-                    if !devices.contains_key(&(&device.address, &device.name)) {
-                        devices.insert((&device.address, &device.name), vec![]);
-                    }
-
-                    devices.get_mut(&(&device.address, &device.name)).unwrap().push(((&self.probes[(scan.probe_id - 1) as usize]).clone(), device.rssi));
-                }
-            }
-        }
-
-        for ((address, name), probes) in devices {
-            if probes.len() < 4 {
-                // println!("Skipping device {:#?}, does not have enough probes.", address);
-                continue;
-            }
-
-            let probe_n = (&probes[3]).clone();
-
-            if name == "BT4.0 Mouse" {
-                println!("DEVICE {}", address);
-                println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST));
-                println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST));
-                println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST));
-                println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION4_CONST));
-            }
-
-            let A = Matrix3x2::from_rows(&[
-                2.0 * (probes[0].0.coords - probe_n.0.coords),
-                2.0 * (probes[1].0.coords - probe_n.0.coords),
-                2.0 * (probes[2].0.coords - probe_n.0.coords),
-            ]);
-
-            let sq = |v: &Matrix1x2<f64>| v.x.powi(2) + v.y.powi(2);
-
-            let d_n_sq = rssi_to_distance(probe_n.1 as f64, PROPAGATION4_CONST).powi(2);
-
-            let b = Vector3::new(
-                sq(&probes[0].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST).powi(2),
-                sq(&probes[1].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST).powi(2),
-                sq(&probes[2].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST).powi(2),
-            );
-
-            let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
-
-            let color = if name == "BT4.0 Mouse" {
+        for (_, device) in &self.devices {
+            let color = if device.name == "BT4.0 Mouse" {
                 Color::from_rgb8(0, 255, 0)
-            } else if name == "HD 450BT" {
+            } else if device.name == "HD 450BT" {
                 Color::from_rgb8(0, 0, 255)
             } else {
                 Color::from_rgb8(255, 0, 0)
             };
 
-            let device_circle = canvas::Path::circle(Point::new(device_coords.x.clamp(0.0, 2000.0) as f32, device_coords.y.clamp(0.0, 2000.0) as f32), DEVICE_CIRCLE_RADIUS);
+            let x: f64 = device.locations.iter().rev().map(|l| l.0).take(5).sum::<f64>() / device.locations.len().max(5) as f64;
+            let y: f64 = device.locations.iter().rev().map(|l| l.1).take(5).sum::<f64>() / device.locations.len().max(5) as f64;
+
+            let device_circle = canvas::Path::circle(Point::new(x.clamp(0.0, 2000.0) as f32, y.clamp(0.0, 2000.0) as f32), DEVICE_CIRCLE_RADIUS);
 
             frame.fill(&device_circle, color);
             frame.fill_text(Text {
                color: Color::BLACK,
                size: 14.0.into(),
-               position: Point::new(device_coords.x.clamp(0.0, 2000.0) as f32 + 10.0, device_coords.y.clamp(0.0, 2000.0) as f32 + 10.0),
-               content: format!("{} - {}", name, address),
+               position: Point::new(x.clamp(0.0, 2000.0) as f32 + 10.0, y.clamp(0.0, 2000.0) as f32 + 10.0),
+               content: format!("{} - {}", device.name, device.address),
                ..Default::default()
             });
         }
@@ -246,6 +208,63 @@ impl Application {
         match message {
             Message::NewScan(scan) => {
                 self.radar.last_scans[scan.probe_id as usize - 1] = Some(scan.clone());
+
+                // ASSUMPTION: A device does not appear multiple times in a single probe.
+                let mut devices = HashMap::new();
+
+                // Transposing the scans here, as we're more interested in what probes got a single device rather
+                // than what devices a single probe got.
+                for scan in &self.radar.last_scans {
+                    if let Some(scan) = scan {
+                        for device in &scan.discovered_devices {
+                            if !devices.contains_key(&(&device.address, &device.name)) {
+                                devices.insert((&device.address, &device.name), vec![]);
+                            }
+
+                            devices.get_mut(&(&device.address, &device.name)).unwrap().push(((&self.radar.probes[(scan.probe_id - 1) as usize]).clone(), device.rssi));
+                        }
+                    }
+                }
+
+                for ((address, name), probes) in devices {
+                    if probes.len() < 4 {
+                        // println!("Skipping device {:#?}, does not have enough probes.", address);
+                        continue;
+                    }
+
+                    if !self.radar.devices.contains_key(address) {
+                        self.radar.devices.insert(address.clone(), RadarDevice { name: name.clone(), address: address.clone(), locations: vec![] });
+                    }
+
+                    let probe_n = (&probes[3]).clone();
+
+                    if name == "BT4.0 Mouse" {
+                        println!("DEVICE {}", address);
+                        println!("- Probe {} d: {}m", 0, rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST));
+                        println!("- Probe {} d: {}m", 1, rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST));
+                        println!("- Probe {} d: {}m", 2, rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST));
+                        println!("- Probe {} d: {}m", 3, rssi_to_distance(probes[3].1 as f64, PROPAGATION4_CONST));
+                    }
+
+                    let A = Matrix3x2::from_rows(&[
+                        2.0 * (probes[0].0.coords - probe_n.0.coords),
+                        2.0 * (probes[1].0.coords - probe_n.0.coords),
+                        2.0 * (probes[2].0.coords - probe_n.0.coords),
+                    ]);
+
+                    let sq = |v: &Matrix1x2<f64>| v.x.powi(2) + v.y.powi(2);
+
+                    let d_n_sq = rssi_to_distance(probe_n.1 as f64, PROPAGATION4_CONST).powi(2);
+
+                    let b = Vector3::new(
+                        sq(&probes[0].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[0].1 as f64, PROPAGATION1_CONST).powi(2),
+                        sq(&probes[1].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[1].1 as f64, PROPAGATION2_CONST).powi(2),
+                        sq(&probes[2].0.coords) - sq(&probe_n.0.coords) + d_n_sq - rssi_to_distance(probes[2].1 as f64, PROPAGATION3_CONST).powi(2),
+                    );
+
+                    let device_coords = (A.transpose() * A).try_inverse().unwrap() * (A.transpose() * b);
+                    self.radar.devices.get_mut(address).unwrap().locations.push((device_coords.x, device_coords.y));
+                }
             }
         }
     }
