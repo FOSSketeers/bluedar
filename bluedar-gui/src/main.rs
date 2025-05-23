@@ -27,9 +27,12 @@ fn mqtt_channel() -> impl Stream<Item = Message> {
 
         while let Ok(message) = eventloop.poll().await {
             if let rumqttc::Event::Incoming(rumqttc::Incoming::Publish(message)) = message {
-                let scan: ScanResult = serde_json::from_slice(&message.payload).unwrap();
-                println!("DEBUG: Received new scan: {:?}", scan);
-                let _ = output.send(Message::NewScan(scan)).await;
+                if let Ok(scan) = serde_json::from_slice::<ScanResult>(&message.payload) {
+                    println!("DEBUG: Received new scan: {:?}", scan);
+                    let _ = output.send(Message::NewScan(scan)).await;
+                } else {
+                    println!("WARN: Ignoring malformed scan.");
+                }
             }
         }
     })
