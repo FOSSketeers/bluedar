@@ -8,10 +8,10 @@ use nalgebra::{Matrix1x2, Matrix1x3, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
-const PROPAGATION1_CONST: f64 = 1.39;
-const PROPAGATION2_CONST: f64 = 1.0;
+const PROPAGATION1_CONST: f64 = 3.40;
+const PROPAGATION2_CONST: f64 = 4.00;
 const PROPAGATION3_CONST: f64 = 2.70;
-const PROPAGATION4_CONST: f64 = 1.83;
+const PROPAGATION4_CONST: f64 = 3.00;
 const BIAS: f64 = 0.0;
 
 fn rssi_to_distance(rssi: f64, n: f64) -> f64 {
