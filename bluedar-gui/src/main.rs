@@ -116,6 +116,14 @@ impl Radar {
         }
     }
 
+    fn draw_probes(&self, frame: &mut canvas::Frame, _bounds: &Rectangle) {
+        for probe in &self.probes {
+            let circle = canvas::Path::circle(Point::new(probe.coords.x as f32, probe.coords.y as f32), DEVICE_CIRCLE_RADIUS);
+
+            frame.fill(&circle, Color::from_rgb8(0, 0, 0));
+        }
+    }
+
     fn draw_devices(&self, frame: &mut canvas::Frame, _bounds: &Rectangle) {
         // ASSUMPTION: A device does not appear multiple times in a single probe.
         let mut devices = HashMap::new();
@@ -183,6 +191,7 @@ impl<Message> canvas::Program<Message> for Radar {
         let mut frame = canvas::Frame::new(renderer, bounds.size());
 
         self.draw_bg_grid(&mut frame, &bounds);
+        self.draw_probes(&mut frame, &bounds);
         self.draw_devices(&mut frame, &bounds);
 
         vec![frame.into_geometry()]
