@@ -9,7 +9,7 @@ use rumqttc::{MqttOptions, AsyncClient, QoS};
 use serde::Deserialize;
 
 const PROPAGATION_CONST: f64 = 2.7;
-const BIAS: f64 = -59.75;
+const BIAS: f64 = 0.0;
 
 fn rssi_to_distance(rssi: f64) -> f64 {
     10f64.powf((rssi / (-10.0 * PROPAGATION_CONST)) - BIAS)
