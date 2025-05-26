@@ -73,11 +73,28 @@ JsonDocument payload() {
     doc["time"] = (uint64_t)bluedar::comms::timeClient.getEpochTime();
     Serial.println(doc["time"].as<uint64_t>());
     JsonArray devices = doc["discovered_devices"].to<JsonArray>();
+
+    std::vector<BtDevice> sortedDevices;
+    sortedDevices.reserve(discoveredDevices.size());
+    
     for (const auto& [macAddr, dev] : discoveredDevices) {
+        sortedDevices.push_back(dev);
+    }
+    
+    std::sort(sortedDevices.begin(), sortedDevices.end(), [](auto& it1, auto& it2) -> bool {
+        return it1.rssi > it2.rssi;
+    });
+    
+    int deviceCount = 0;
+    for (const auto& dev : sortedDevices) {
         if (dev.ttl >= dev.initial_ttl - 1) {
+            deviceCount++;
+            if (deviceCount > 20) {
+                break;
+            }
             JsonDocument devObj;
             devObj["is_ble"] = true;
-            devObj["address"] = macAddr;
+            devObj["address"] = dev.address;
             devObj["address_type_id"] = (uint8_t)dev.btAddressTypeId;
             devObj["name"] = dev.name;
             devObj["rssi"] = dev.rssi;
