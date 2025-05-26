@@ -10,7 +10,7 @@ void setupMqtt() {
     delay(100);
     mqtt.setServer(BLUEDAR_MQTT_SERVER, BLUEDAR_MQTT_PORT);
     mqtt.setKeepAlive(20);
-    mqtt.setBufferSize(2048);
+    mqtt.setBufferSize(4096);
 
     bool success = false;
     while (!success) {
@@ -33,7 +33,7 @@ bool publish(const JsonDocument& payload) {
         setupMqtt();
     }
 
-    char buffer[2048];
+    char buffer[4096];
     size_t n = serializeJson(payload, buffer, sizeof(buffer));
     return mqtt.publish(BLUEDAR_MQTT_TOPIC, buffer, n);
 }
