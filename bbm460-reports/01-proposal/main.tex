@@ -1,0 +1,64 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{BBM460 Project Proposal: Locating Earthquake Victims Using Bluetooth}
+\date{16 March 2025}
+
+\begin{document}
+
+\maketitle
+\author{
+    \begin{center}
+        İlker Avcı (2210356061) - Buğra Kağan Acar (2210356097)
+    \end{center}
+}
+
+\section{Project Summary}
+
+In the context of natural disasters, one of the most critical factors in ensuring effective rescue operations is the ability to quickly and accurately locate victims. When traditional communication infrastructure is compromised or unavailable, finding individuals can become a daunting and time-consuming challenge. However, with the widespread use of mobile devices, most people are constantly emitting radio signals, such as Bluetooth, which can serve as an invaluable resource in such situations. Our project seeks to leverage these ubiquitous signals to develop a system capable of locating individuals in distress. By creating an innovative solution that utilizes existing technologies, we aim to enhance the efficiency of search and rescue operations, ultimately saving lives in the aftermath of natural disasters. This system will make use of Bluetooth signals to pinpoint the exact location of victims, providing crucial data to first responders and disaster relief teams.
+
+\section{Method}
+
+To achieve the goal of efficiently locating victims, our system will deploy multiple probes, each consisting of an ESP32 microcontroller, which will listen for Bluetooth signals emitted by nearby mobile devices. These ESP32 probes will continuously scan their environment for Bluetooth signals and record the signal strength, which will serve as an indicator of the distance between the victim’s mobile device and the probe.
+
+The recorded data from the probes will be transmitted to a central processing unit for triangulation. To facilitate real-time communication between the probes and the central system, we will utilize the MQTT protocol (Message Queuing Telemetry Transport). MQTT is a lightweight messaging protocol designed for low-bandwidth, high-latency, or unreliable networks, making it ideal for disaster scenarios where communication infrastructure may be compromised. Each ESP32 probe will publish the signal strength data it collects to specific MQTT topics, which the central system will subscribe to.
+
+The central system, acting as the data aggregator, will collect the signal strength information from multiple probes and use it to compute the location of the victim using triangulation techniques. By analyzing the variation in signal strength between different probes, the central system can estimate the distances between the victim and each of the probes. With data from at least three probes, the central system will apply geometric algorithms to triangulate the exact location of the victim in real time.
+
+This distributed approach, with the MQTT protocol facilitating communication and the central system handling the processing, ensures that the system is scalable and capable of functioning in various environments, from small local areas to larger disaster zones. Additionally, the use of MQTT ensures minimal data loss and efficient transmission, making the system robust even in low-connectivity situations, such as after a natural disaster.
+
+Through this method, our system will provide timely and accurate location information to rescue teams, enabling them to respond more effectively and save lives in crisis situations.
+
+\section{Technologies to be Used}
+
+\begin{itemize}
+    \item Multiple ESP32 microcontrollers
+    \item Bluetooth
+    \item Triangulation algorithms
+    \item MQTT
+\end{itemize}
+
+\section{Project Plan / Timeline}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|}
+    \hline
+    \bf{Milestone} & \bf{Projected Due Date} \\
+    \hline
+    Obtaining the Devices & 26.03.2025 \\
+    \hline
+    Designing the Software & 04.04.2025 \\
+    \hline
+    Assembling the System & 20.04.2025 \\
+    \hline
+    Final Testing \& Quirk Busting & 12.05.2025 \\
+    \hline
+    \end{tabular}
+\end{table}
+
+
+\section{References}
+None.
+
+\end{document}
