@@ -84,6 +84,7 @@ void loop() {
             bdlog("Ready for scanning!");
 
             appState = BluedarState::SCANNING;
+            break;
         }
 
         case BluedarState::SCANNING: {  // state 4
@@ -105,6 +106,7 @@ void loop() {
             if (!ret) {
                 bdlog("Error: could not publish the MQTT payload!");
             }
+            break;
         }
     }
 }
