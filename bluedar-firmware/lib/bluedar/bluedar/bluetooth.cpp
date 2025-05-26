@@ -9,6 +9,10 @@ namespace bluedar::bt {
 
 class BleCallbackClass : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice* device) override {
+        if (device->getRSSI() < -90){
+            return;
+        }
+
         std::string macAddr = device->getAddress().toString();
         discoveredDevices[macAddr] = {device, 10};
     }
